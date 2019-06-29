@@ -1,6 +1,6 @@
-# java_dep
+# java-class-reader.cr
 
-TODO: Write a description here
+Java-class-reader.cr is a library that allows you ro read and access properties of java classes for JVM up to version 10.
 
 ## Installation
 
