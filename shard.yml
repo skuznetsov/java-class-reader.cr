@@ -1,0 +1,13 @@
+name: java_dep
+version: 0.1.0
+
+authors:
+  - Sergey Kuznetsov <sergey@iterudit.com>
+
+targets:
+  java_dep:
+    main: src/java_dep.cr
+
+crystal: 0.26.1
+
+license: MIT
