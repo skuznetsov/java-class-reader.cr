@@ -1,307 +1,309 @@
+require "./utils"
 require "./constant_pool_reader"
 require "./constants"
 
 module Java
     class BaseTag
-        getter tagName : String = ""
+        property tag : Constants::Constant = Constants::Constant::None
     end
 
     class ClassTag < BaseTag
         getter constantPool : ConstantPool
-        getter tagName : String = "Class"
-        property className : String = ""
+        property className : Bytes = Bytes.empty
         property nameIndex : UInt16 = 0
 
         def className
-            if @constantPool
-                stringTag = @constantPool[self.nameIndex].as(Utf8Tag)
-                return stringTag ? stringTag.string : ""
-            else
-                return ""
-            end
+            tag = @constantPool[self.nameIndex].as?(Utf8Tag)
+            return Bytes.empty unless tag
+            tag.string.not_nil!
         end
 
-        def to_s
-            self.className
+        def to_s (io : IO) : Nil
+            io << str(self.className)
         end
 
         def initialize(cp)
             @constantPool = cp
-            @tag = Java::Constants::CONSTANT_Class
+            @tag = Java::Constants::Constant::Class
         end
     end
 
     class FieldRefTag < BaseTag
         getter constantPool : ConstantPool
-        property tagName : String = "FieldRef"
         property classIndex : UInt16 = 0
         property nameAndTypeIndex : UInt16 = 0
+
         def text
-            "#{self.fieldType} #{self.className}##{self.fieldName}"
+            "#{str(self.fieldType)} #{str(self.className)}##{str(self.fieldName)}"
         end
 
         def className
-            tag = @constantPool[self.classIndex].as(ClassTag)
-            tag ? tag.className : ""
+            tag = @constantPool[self.classIndex].as?(ClassTag)
+            return Bytes.empty unless tag
+            tag.className.not_nil!
         end
 
         def fieldName
-            tag = @constantPool[self.nameAndTypeIndex].as(NameAndTypeTag)
-            tag ? tag.name : ""
+            tag = @constantPool[self.nameAndTypeIndex].as?(NameAndTypeTag)
+            return Bytes.empty unless tag
+            tag.name.not_nil!
         end
 
         def fieldType
-            tag = @constantPool[self.nameAndTypeIndex].as(NameAndTypeTag)
-            tag ? tag.type : ""
+            tag = @constantPool[self.nameAndTypeIndex].as?(NameAndTypeTag)
+            return Bytes.empty unless tag
+            tag.type.not_nil!
         end
 
-        def to_s
-            self.text
+        def to_s (io : IO) : Nil
+            io << self.text
         end
 
         def initialize(cp)
             @constantPool = cp
-            @tag = Java::Constants::CONSTANT_Fieldref
+            @tag = Java::Constants::Constant::Fieldref
         end
     end
 
     class MethodRefTag < BaseTag
         getter constantPool : ConstantPool
-        property tagName : String = "MethodRef"
         property classIndex : UInt16 = 0
         property nameAndTypeIndex : UInt16 = 0
 
         def text
-            "#{self.methodType} #{self.className}##{self.methodName}"
+            "#{str(self.methodType)} #{str(self.className)}##{str(self.methodName)}"
         end
 
         def className
-            if self.classIndex.nil? 
-                ""
-            else
-                tag = @constantPool[self.classIndex].as(ClassTag)
-                tag ? tag.className : ""
-            end
+            tag = @constantPool[self.classIndex].as?(ClassTag)
+            return Bytes.empty unless tag
+            tag.className.not_nil!
         end
 
         def methodName
-            tag = @constantPool[self.nameAndTypeIndex].as(NameAndTypeTag)
-            tag ? tag.name : ""
+            tag = @constantPool[self.nameAndTypeIndex].as?(NameAndTypeTag)
+            return Bytes.empty unless tag
+            tag.name.not_nil!
         end
 
         def methodType
-            tag = @constantPool[self.nameAndTypeIndex].as(NameAndTypeTag)
-            tag ? tag.type : ""
+            tag = @constantPool[self.nameAndTypeIndex].as?(NameAndTypeTag)
+            return Bytes.empty unless tag
+            tag.type.not_nil!
         end
 
-        def to_s
-            self.text
+        def to_s (io : IO) : Nil
+            io << self.text
         end
 
         def initialize(cp)
             @constantPool = cp
-            @tag = Java::Constants::CONSTANT_Methodref
+            @tag = Java::Constants::Constant::Methodref
         end
     end
 
     class InterfaceMethodRefTag < BaseTag
         getter constantPool : ConstantPool
-        property tagName : String = "InterfaceMethodRef"
         property classIndex : UInt16 = 0
         property nameAndTypeIndex : UInt16 = 0
 
         def text
-            "#{self.interfaceMethodType} #{self.className}##{self.interfaceMethodName}"
+            "#{str(self.interfaceMethodType)} #{str(self.className)}##{str(self.interfaceMethodName)}"
         end
 
         def className
-            tag = @constantPool[self.classIndex].as(ClassTag)
-            tag ? tag.className : ""
+            tag = @constantPool[self.classIndex].as?(ClassTag)
+            return Bytes.empty unless tag
+            tag.className.not_nil!
         end
         def interfaceMethodName
-            tag = @constantPool[self.nameAndTypeIndex].as(NameAndTypeTag)
-            tag ? tag.name : ""
+            tag = @constantPool[self.nameAndTypeIndex].as?(NameAndTypeTag)
+            return Bytes.empty unless tag
+            tag.name.not_nil!
         end
 
         def interfaceMethodType
-            tag = @constantPool[self.nameAndTypeIndex].as(NameAndTypeTag)
-            tag ? tag.type : ""
+            tag = @constantPool[self.nameAndTypeIndex].as?(NameAndTypeTag)
+            return Bytes.empty unless tag
+            tag.type.not_nil!
         end
 
-        def to_s
-            self.text
+        def to_s (io : IO) : Nil
+            io << self.text
         end
 
         def initialize(cp)
             @constantPool = cp
-            @tag = Java::Constants::CONSTANT_InterfaceMethodref
+            @tag = Java::Constants::Constant::InterfaceMethodref
         end
     end
 
     class StringTag < BaseTag
         getter constantPool : ConstantPool
-        property tagName : String = "String"
         property stringIndex : UInt16 = 0
 
         def value
-            tag = @constantPool[self.stringIndex].as(Utf8Tag)
-            tag ? tag.string : ""
+            tag = @constantPool[self.stringIndex].as?(Utf8Tag)
+            return Bytes.empty unless tag
+            tag.string.not_nil!
         end
 
-        def to_s
-            self.value
+        def to_s (io : IO) : Nil
+            io << String.new(self.value)
         end
 
         def initialize(cp)
             @constantPool = cp
-            @tag = Java::Constants::CONSTANT_String
+            @tag = Java::Constants::Constant::String
         end
     end
 
     class IntegerTag < BaseTag
         getter constantPool : ConstantPool
-        property tagName : String = "Integer"
         property integer : Int32 = 0
 
         def value
-            self.integer.to_s
+            self.integer
         end
 
-        def to_s
-            self.value
+        def to_s (io : IO) : Nil
+            io << self.value
         end
 
         def initialize(cp)
             @constantPool = cp
-            @tag = Java::Constants::CONSTANT_Integer
+            @tag = Java::Constants::Constant::Integer
         end
     end
 
     class FloatTag < BaseTag
         getter constantPool : ConstantPool
-        property tagName : String = "Float"
         property float : Float32 = 0.0
 
         def value
-            self.float.to_s
+            self.float
         end
 
-        def to_s
-            self.value
+        def to_s (io : IO) : Nil
+            io << self.value
         end
 
         def initialize(cp)
             @constantPool = cp
-            @tag = Java::Constants::CONSTANT_Float
+            @tag = Java::Constants::Constant::Float
         end
     end
 
     class LongTag < BaseTag
         getter constantPool : ConstantPool
-        property tagName : String = "Long"
         property long : Int64 = 0
 
         def value
-            self.long.to_s
+            self.long
         end
 
-        def to_s
-            self.value
+        def to_s (io : IO) : Nil
+            io << self.value
         end
 
         def initialize(cp)
             @constantPool = cp
-            @tag = Java::Constants::CONSTANT_Long
+            @tag = Java::Constants::Constant::Long
         end
     end
 
     class DoubleTag < BaseTag
         getter constantPool : ConstantPool
-        property tagName : String = "Double"
         property double : Float64 = 0.0
 
         def value
-            self.double.to_s
+            self.double
         end
 
-        def to_s
-            self.value
+        def to_s (io : IO) : Nil
+            io << self.value
         end
 
         def initialize(cp)
             @constantPool = cp
-            @tag = Java::Constants::CONSTANT_Double
+            @tag = Java::Constants::Constant::Double
         end
     end
 
     class NameAndTypeTag < BaseTag
         getter constantPool : ConstantPool
-        property tagName : String = "NameAndType"
         property nameIndex : UInt16 = 0
         property signatureIndex : UInt16 = 0
 
         def name 
-            stringTag = @constantPool[self.nameIndex].as(Utf8Tag)
-            stringTag ? stringTag.string : ""
+            tag = @constantPool[self.nameIndex].as?(Utf8Tag)
+            return Bytes.empty unless tag
+            tag.string.not_nil!
         end
 
         def type
-            stringTag = @constantPool[self.nameIndex].as(Utf8Tag)
-            stringTag ? stringTag.string : ""
+            tag = @constantPool[self.nameIndex].as?(Utf8Tag)
+            return Bytes.empty unless tag
+            tag.string.not_nil!
         end
 
         def text
-            "#{self.name}:#{self.type}"
+            "#{str(self.name)}:#{str(self.type)}"
         end
 
-        def to_s
-            self.text
+        def to_s (io : IO) : Nil
+            io << self.text
         end
 
         def initialize(cp)
             @constantPool = cp
-            @tag = Java::Constants::CONSTANT_NameAndType
+            @tag = Java::Constants::Constant::NameAndType
         end
     end
 
     class Utf8Tag < BaseTag
         getter constantPool : ConstantPool
-        property tagName : String = "Utf8"
-        property string : String = ""
+        property string : Bytes? = Bytes.empty
 
-        def to_s
-            self.string
+        def text
+            str(self.string)
+        end
+
+        def to_s (io : IO) : Nil
+            io << self.text
         end
 
         def initialize(cp)
             @constantPool = cp
-            @tag = Java::Constants::CONSTANT_Utf8
+            @tag = Java::Constants::Constant::Utf8
         end
     end
 
     class MethodHandleTag < BaseTag
         getter constantPool : ConstantPool
-        property tagName : String = "MethodHandle"
         property referenceKind : UInt8? = nil
         property referenceIndex : UInt16? = nil
         @kind = ["", "getField", "getStatic", "putField", "putStatic", "invokeVirtual", 
                  "invokeStatic", "invokeSpecial", "newInvokeSpecial", "invokeInterface"]
 
         def kind
-            self.referenceKind ? @kind[self.referenceKind || 0]? : ""
+            @kind[self.referenceKind || 0]? || ""
         end
 
         def reference
-            case @constantPool[self.referenceIndex].class
+            return nil if (self.referenceIndex || 0) > @constantPool.size
+            case @constantPool[self.referenceIndex]
                 when FieldRefTag
                     tag = @constantPool[referenceIndex].as(FieldRefTag)
-                    tag ? tag.text : ""
+                    tag && tag.text
                 when MethodRefTag
                     tag = @constantPool[referenceIndex].as(MethodRefTag)
-                    tag ? tag.text : ""
+                    tag && tag.text
                 when InterfaceMethodRefTag
                     tag = @constantPool[referenceIndex].as(InterfaceMethodRefTag)
-                    tag ? tag.text : ""
+                    tag && tag.text
+                else
+                    nil
             end
         end
 
@@ -309,115 +311,116 @@ module Java
             "#{self.kind} #{self.reference}"
         end
 
-        def to_s
-            self.text
+        def to_s (io : IO) : Nil
+            io << self.text
         end
 
         def initialize(cp)
             @constantPool = cp
-            @tag = Java::Constants::CONSTANT_MethodHandle
+            @tag = Java::Constants::Constant::MethodHandle
         end
     end
 
     class MethodTypeTag < BaseTag
         getter constantPool : ConstantPool
-        property tagName : String = "MethodType"
         property descriptorIndex : UInt16 = 0
 
         def descriptor
-            stringTag = @constantPool[self.descriptorIndex].as(Utf8Tag)
-            stringTag ? stringTag.string : ""
+            tag = @constantPool[self.descriptorIndex].as?(Utf8Tag)
+            return Bytes.empty unless tag
+            tag.string.not_nil!
         end
 
         def text
-            self.descriptor
+            str(self.descriptor)
         end
 
-        def to_s
-            self.text
+        def to_s (io : IO) : Nil
+            io << self.text
         end
 
         def initialize(cp)
             @constantPool = cp
-            @tag = Java::Constants::CONSTANT_MethodType
+            @tag = Java::Constants::Constant::MethodType
         end
     end
 
     class InvokeDynamicTag < BaseTag
         getter constantPool : ConstantPool
-        property tagName : String = "InvokeDynamic"
         property bootstrapMethodAttributeIndex : UInt16 = 0
         property nameAndTypeIndex : UInt16 = 0
 
         def name 
-            tag = @constantPool[self.nameAndTypeIndex].as(NameAndTypeTag)
-            tag ? tag.name : ""
+            tag = @constantPool[self.nameAndTypeIndex].as?(NameAndTypeTag)
+            return Bytes.empty unless tag
+            tag.name.not_nil!
         end
 
         def type
-            tag = @constantPool[self.nameAndTypeIndex].as(NameAndTypeTag)
-            tag ? tag.type : ""
+            tag = @constantPool[self.nameAndTypeIndex].as?(NameAndTypeTag)
+            return Bytes.empty unless tag
+            tag.type.not_nil!
         end
 
         def text
-            "bootstrap: #{self.bootstrapMethodAttributeIndex} -> #{self.name} -> #{self.type}"
+            "bootstrap: #{self.bootstrapMethodAttributeIndex} -> #{str(self.name)} -> #{str(self.type)}"
         end
 
-        def to_s
-            self.text
+        def to_s (io : IO) : Nil
+            io << self.text
         end
 
         def initialize(cp)
             @constantPool = cp
-            @tag = Java::Constants::CONSTANT_InvokeDynamic
+            @tag = Java::Constants::Constant::InvokeDynamic
         end
     end
 
     class ModuleTag < BaseTag
         getter constantPool : ConstantPool
-        property tagName : String = "Module"
         property moduleNameIndex : UInt16 = 0
 
         def name
-            stringTag = @constantPool[self.moduleNameIndex].as(Utf8Tag)
-            stringTag ? stringTag.string : ""
+            tag = @constantPool[self.moduleNameIndex].as?(Utf8Tag)
+            return Bytes.empty unless tag
+            tag.string.not_nil!
         end
 
         def text
-            self.name
+            str(self.name)
         end
 
-        def to_s
-            self.text
+        def to_s (io : IO) : Nil
+            io << self.text
         end
 
         def initialize(cp)
             @constantPool = cp
-            @tag = Java::Constants::CONSTANT_Module
+            @tag = Java::Constants::Constant::Module
         end
     end
 
     class PackageTag < BaseTag
         getter constantPool : ConstantPool
-        property tagName : String = "Package"
         property packageNameIndex : UInt16 = 0
 
         def name
-            stringTag = @constantPool[self.packageNameIndex].as(Utf8Tag)
-            stringTag ? stringTag.string : ""
+            tag = @constantPool[self.packageNameIndex].as?(Utf8Tag)
+            return Bytes.empty unless tag
+            tag.string.not_nil!
         end
 
         def text
-            self.name
+            str(self.name)
         end
 
-        def to_s
-            self.text
+        def to_s (io : IO) : Nil
+            io << self.text
         end
 
         def initialize(cp)
             @constantPool = cp
-            @tag = Java::Constants::CONSTANT_Package
+            @tag = Java::Constants::Constant::Package
         end
     end
 
@@ -429,18 +432,28 @@ module Java
         @ca : Java::ConstantPoolReader?
         @cp : Array(BaseTag)
 
-        def initialize (ca)
+        def initialize (ca = nil)
             @ca = ca
             @cp = [] of BaseTag
             @cp << NilTag.new
         end
 
         def length
-            return @cp.size
+            @cp ? @cp.size : 0
+        end
+
+        def size
+            self.length
         end
 
         def buffer
-            return @cp
+            @cp
+        end
+
+        def each_tag
+            buffer.each_with_index do |tag, index|
+                yield(tag, index) unless tag.is_a? NilTag
+            end
         end
 
         def addTag(tagData)

@@ -1,36 +1,34 @@
 require "zip"
-# require "./class_reader"
-require "./constant_pool_reader"
+require "./class_reader"
+# require "./constant_pool_reader"
 
 module Java
-    struct JarFileStatus
-        @inUse : Bool = false
-        property :inUse
-        @fileName : String = ""
-        property :fileName
-
-        def initialize (inUse inuse, fileName filename)
-            @inUse = inuse
-            @fileName = filename
-        end
-    end
-
     class ClassLoader
         getter :classes
         getter :classRegistry
         getter :jars
 
+        record JarFilesInUse, fileName : String, inUse : Bool do
+            def fileName=(value)
+                @fileName = value
+            end
+
+            def inUse=(value)
+                @inUse = value
+            end
+        end
+
         def initialize (constantPoolOnly)
             @paths = [ __DIR__ ]
             @classRegistry = {} of String => Int32
             @classes = {} of String => ConstantPoolReader
-            @jars = [] of JarFileStatus
+            @jars = [] of JarFilesInUse
             @constantPoolOnly = !!constantPoolOnly
         end
 
         def logWarning (logEntry)
-            logEntry = Time.now.to_s + ": " + logEntry
-            puts logEntry
+            logEntry = "#{Time.local}: #{logEntry}"
+            puts logEntry if ENV["DEBUG"]?
         end
 
         def addPath (path)
@@ -68,42 +66,10 @@ module Java
             # classObject = this.constantPoolOnly ? ConstantPoolReader.new(bytes) : ClassReader.new(bytes)
             classObject = ConstantPoolReader.new(bytes)
             classObject.read()
-            puts classObject.to_s
+            logWarning(classObject.to_s)
             @classes[classObject.getClassName()] = classObject
-            return classObject
+            classObject
         end
-    
-        # def findPathInternal(prependedPath, appendedPath)
-        #     prependedPath = path.normalize(prependedPath)
-        #     appendedPath = path.normalize(appendedPath)
-    
-        #     ppData = prependedPath.split(path.sep);
-        #     result = '';
-        #     for (ppIdx = ppData.length - 1; ppIdx > 0; ppIdx--) {
-        #         result = ppData.join(path.sep) + path.sep + appendedPath;
-        #         if (fs.existsSync(result)) {
-        #             return result;
-        #         }
-        #         ppData.pop();
-        #     }
-        #     return null;
-        # }
-    
-        # findPath(prependedPath, appendedPath) {
-        #     filepath = null;
-    
-        #     for(idx = 0; idx < this.paths.length; idx++) {
-        #         classpath = this.paths[idx];
-        #         filepath = path.normalize(classpath) + path.sep + path.normalize(appendedPath);
-        #         if (fs.existsSync(filepath)) {
-        #             return filepath;
-        #         }
-        #     }
-    
-        #     filepath = this.findPathInternal(prependedPath, appendedPath);
-    
-        #     return filepath;
-        # }
     
         def loadClassFromJar (className)
             classData = @classes[className];
@@ -112,7 +78,7 @@ module Java
             end
     
             if className =~ /^javax?\/|^\[/
-                return Nil
+                return nil
             end
     
             jarIndex = @classRegistry[className]?
@@ -123,12 +89,11 @@ module Java
             end
 
             classPath = @jars[jarIndex].fileName
-            if !classPath
-                if !className =~ /^javax?/
+            unless classPath
+                unless className =~ /^javax?/
                     # puts("Class #{className} cannot be found in the paths defined in the CLASSPATH. Please add the path and try again.");
                 end
                 return nil
-                # process.exit(1);
             end
     
             classData = nil
@@ -146,25 +111,19 @@ module Java
                     classData = File.read(classPath)
                 end
     
-                ca = self.loadClassBytes(classData);
-    
-                return ca
+                self.loadClassBytes(classData);    
             else
-                if !className =~ /^javax?\//
-                    # puts "Class #{className} cannot be found in the paths defined in the CLASSPATH. Please add the path and try again."
-                end
-                return nil
-                # exit 1
+                nil
             end
         end
     
         def loadClassFile (fileName)
             bytes = File.read(fileName)
             ca = self.loadClassBytes(bytes)
-            if !@constantPoolOnly
+            unless @constantPoolOnly
                 classes = ca.getExternalClasses()
                 classes && classes.each do |className|
-                    if !@classes[className]
+                    unless @classes[className]
                         self.getClass(className, true)
                     end
                 end
@@ -179,7 +138,7 @@ module Java
                     return
                 end
             end
-            @jars << JarFileStatus.new fileName: fileName, inUse: false
+            @jars << JarFilesInUse.new(fileName, false)
             jarIndex = @jars.size - 1
             Zip::File.open(fileName) do |zip|
                 zipEntries = zip.entries            
@@ -195,7 +154,7 @@ module Java
                             end
                         end
                     end
-                end
+                end 
             end
         end
 
@@ -204,7 +163,7 @@ module Java
                 if jarFile.fileName == fileName
                     jarFile.inUse = true
                 else
-                    @jars << JarFileStatus.new fileName: fileName, inUse: true
+                    @jars << JarFilesInUse.new(fileName, true)
                 end
             end
             Zip::File.open(fileName) do |zip|
@@ -243,8 +202,6 @@ module Java
             classData = self.loadClassFromJar className
                 
             return classData if classData
-    
-            # puts "Implementation of the #{className} class is not found."
         end
 
         def loadClassFiles(dirName)
@@ -263,10 +220,8 @@ module Java
         
         def indexJarFiles(dirName)
             self.addPath(dirName)
-            puts "Dirname: #{dirName}"
             files = Dir.glob("#{dirName.chomp("/")}/*")
             files.each do |filePath|
-                puts filePath
                 if Dir.exists? filePath
                     self.indexJarFiles(filePath)
                 elsif File.exists? filePath
